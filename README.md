@@ -2,12 +2,14 @@ SaaS Contracts Dashboard
 A modern, React-based contracts management dashboard with AI-powered insights for SaaS applications. This project provides a comprehensive solution for managing contract portfolios, tracking renewals, and analyzing risks.
 
  Features:
+
 Core Functionality
 Contract Portfolio Management - View, search, and filter contracts
 AI-Powered Risk Assessment - Automated risk scoring and recommendations
 Real-time Dashboard - Live statistics and trend monitoring
 Advanced Search & Filtering - Multi-criteria contract discovery
 Responsive Design - Mobile-first, cross-device compatibility
+
 Dashboard Components
 Statistics Overview - Total contracts, active count, portfolio value, renewal alerts
 Interactive Data Table - Sortable columns, pagination, action menus
@@ -140,7 +142,10 @@ Animation utilities
  Responsive Breakpoints
 css
 /* Mobile First Approach */
-sm: '640px'    /* Small devices */
+sm: '640px'  
+ 
+/* Due to limited time, responsiveness is partially implemented. Desktop view is fully optimized, and mobile view is partially supported. Given more time, I would enhance mobile responsiveness with refined layouts.*/
+
 md: '768px'    /* Medium devices */
 lg: '1024px'   /* Large devices */
 xl: '1280px'   /* Extra large devices */
@@ -171,8 +176,10 @@ Output Directory: dist
 Deploy automatically on push to main branch
 Netlify Deployment
 Connect repository to Netlify
+
 Set build command: npm run build
 Set publish directory: dist
+
 Deploy with continuous integration
  Contributing
 Fork the repository
@@ -181,6 +188,7 @@ Commit your changes (git commit -m 'Add amazing feature')
 Push to the branch (git push origin feature/amazing-feature)
 Open a Pull Request
 Code Style Guidelines
+
 Use functional components with hooks
 Follow Tailwind CSS utility-first approach
 Implement proper error boundaries
@@ -188,6 +196,7 @@ Write descriptive commit messages
 Add JSDoc comments for complex functions
  API Integration
 Mock API Endpoints
+
 javascript
 // Contracts endpoint
 GET /contracts.json
