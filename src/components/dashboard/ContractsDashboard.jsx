@@ -1,121 +1,100 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
+  FileText, 
+  CheckCircle, 
+  Clock, 
+  AlertTriangle, 
   Search, 
   Filter, 
-  Download, 
   Plus, 
   Eye, 
+  MoreHorizontal, 
+  Users, 
   Calendar,
-  Users,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  XCircle,
-  MoreHorizontal,
-  ArrowUpDown,
-  RefreshCcw,
-  FileText,
-  BarChart3,
-  Settings,
+  Menu,
   Bell,
   User,
-  Menu,
-  ChevronDown
+  ChevronDown,
+  BarChart3,
+  TrendingUp,
+  Settings,
+  RefreshCw,
+  Download
 } from 'lucide-react';
 
-const Dashboard = () => {
-  const [contracts, setContracts] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ContractsDashboard = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedRisk, setSelectedRisk] = useState('all');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Mock data
-  const mockContracts = [
+  const contracts = [
     {
       id: 'c1',
       name: 'Microsoft Service Agreement',
       parties: 'Microsoft & ABC Corp',
+      value: '$125,000',
       expiry: '2025-12-31',
       status: 'Active',
-      risk: 'Medium',
-      value: '$125,000'
+      risk: 'Medium'
     },
     {
       id: 'c2',
       name: 'Network Services Contract',
       parties: 'TelNet & ABC Corp',
+      value: '$89,500',
       expiry: '2025-10-10',
       status: 'Renewal Due',
-      risk: 'High',
-      value: '$89,500'
+      risk: 'High'
     },
     {
       id: 'c3',
       name: 'Cloud Infrastructure Deal',
       parties: 'AWS & ABC Corp',
+      value: '$250,000',
       expiry: '2026-03-15',
       status: 'Active',
-      risk: 'Low',
-      value: '$250,000'
-    },
-    {
-      id: 'c4',
-      name: 'Software License Agreement',
-      parties: 'Adobe & ABC Corp',
-      expiry: '2024-08-20',
-      status: 'Expired',
-      risk: 'High',
-      value: '$45,000'
+      risk: 'Low'
     }
   ];
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setContracts(mockContracts);
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const getStatusIcon = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'Active':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'Expired':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return 'bg-green-50 text-green-700 border-green-200';
       case 'Renewal Due':
-        return <Clock className="w-4 h-4 text-orange-600" />;
+        return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'Expired':
+        return 'bg-red-50 text-red-700 border-red-200';
       default:
-        return <AlertTriangle className="w-4 h-4 text-gray-600" />;
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
   const getRiskColor = (risk) => {
     switch (risk) {
       case 'High':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-50 text-red-700 border-red-200';
       case 'Medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'Low':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-50 text-green-700 border-green-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusIcon = (status) => {
     switch (status) {
       case 'Active':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Expired':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'Renewal Due':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+        return <Clock className="w-4 h-4 text-orange-500" />;
+      case 'Expired':
+        return <AlertTriangle className="w-4 h-4 text-red-500" />;
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return <FileText className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -179,18 +158,18 @@ const Dashboard = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-4 space-y-1">
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
-                className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-colors ${
+                className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-colors text-sm font-medium ${
                   item.active
                     ? 'bg-blue-50 text-blue-700 border border-blue-200'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 {item.icon}
-                <span className="ml-3 font-medium">{item.label}</span>
+                <span className="ml-3">{item.label}</span>
               </button>
             ))}
           </nav>
@@ -200,7 +179,7 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="md:ml-64">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-4">
+        <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-3">
           <div className="flex items-center justify-between">
             {/* Left Section */}
             <div className="flex items-center">
@@ -211,19 +190,27 @@ const Dashboard = () => {
                 <Menu className="w-5 h-5" />
               </button>
               <div className="ml-4 md:ml-0">
-                <h1 className="text-2xl font-bold text-gray-900">Contracts Dashboard</h1>
+                <h1 className="text-xl font-bold text-gray-900">Contracts Dashboard</h1>
                 <p className="text-sm text-gray-600">Manage and monitor your contract portfolio</p>
               </div>
             </div>
 
             {/* Right Section */}
             <div className="flex items-center space-x-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Quick search..."
+                  className="w-64 pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg relative">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-lg">
-                <User className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+                <User className="w-4 h-4 text-gray-600" />
                 <span className="text-sm font-medium text-gray-900">John Doe</span>
                 <ChevronDown className="w-4 h-4 text-gray-600" />
               </div>
@@ -232,17 +219,17 @@ const Dashboard = () => {
         </header>
 
         {/* Main Dashboard Content */}
-        <main className="p-4 md:p-6">
+        <main className="p-4 md:p-6 space-y-6">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+              <div key={index} className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
                   </div>
-                  <div className={`${stat.color} text-white p-3 rounded-lg`}>
+                  <div className={`${stat.color} text-white p-2.5 rounded-lg`}>
                     {stat.icon}
                   </div>
                 </div>
@@ -250,150 +237,156 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Controls Bar */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              {/* Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search contracts or parties..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Expired">Expired</option>
-                  <option value="Renewal Due">Renewal Due</option>
-                </select>
-
-                <select
-                  value={selectedRisk}
-                  onChange={(e) => setSelectedRisk(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Risk Levels</option>
-                  <option value="High">High Risk</option>
-                  <option value="Medium">Medium Risk</option>
-                  <option value="Low">Low Risk</option>
-                </select>
-
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">New Contract</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Contracts Table */}
+          {/* Controls and Table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Contracts</h3>
-                <div className="flex items-center space-x-2">
-                  <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <RefreshCcw className="w-4 h-4" />
+            {/* Controls Bar */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Left side - Search and Filters */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search contracts or parties..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="Active">Active</option>
+                      <option value="Renewal Due">Renewal Due</option>
+                      <option value="Expired">Expired</option>
+                    </select>
+
+                    <select
+                      value={selectedRisk}
+                      onChange={(e) => setSelectedRisk(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    >
+                      <option value="all">All Risk Levels</option>
+                      <option value="Low">Low Risk</option>
+                      <option value="Medium">Medium Risk</option>
+                      <option value="High">High Risk</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Right side - Actions */}
+                <div className="flex items-center gap-2">
+                  <button className="flex items-center gap-2 px-3 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh
                   </button>
-                  <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button className="flex items-center gap-2 px-3 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
                     <Download className="w-4 h-4" />
+                    Export
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    <Plus className="w-4 h-4" />
+                    New Contract
                   </button>
                 </div>
               </div>
             </div>
 
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading contracts...</p>
-              </div>
-            ) : filteredContracts.length === 0 ? (
-              <div className="p-8 text-center">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">No contracts found</p>
-                <p className="text-sm text-gray-500">Try adjusting your search or filters</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <button className="flex items-center space-x-1 hover:text-gray-700">
-                          <span>Contract</span>
-                          <ArrowUpDown className="w-3 h-3" />
-                        </button>
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parties</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredContracts.map((contract) => (
-                      <tr key={contract.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{contract.name}</div>
-                            <div className="text-sm text-gray-500">ID: {contract.id}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Users className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{contract.parties}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-gray-900">{contract.value}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">{contract.expiry}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {getStatusIcon(contract.status)}
-                            <span className={`ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(contract.status)}`}>
-                              {contract.status}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getRiskColor(contract.risk)}`}>
-                            {contract.risk} Risk
+            {/* Contracts Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contract
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Parties
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Expiry
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Risk
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredContracts.map((contract) => (
+                    <tr key={contract.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{contract.name}</div>
+                          <div className="text-sm text-gray-500">ID: {contract.id}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">{contract.parties}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-900">{contract.value}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">{contract.expiry}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getStatusIcon(contract.status)}
+                          <span className={`ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(contract.status)}`}>
+                            {contract.status}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getRiskColor(contract.risk)}`}>
+                          {contract.risk} Risk
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Empty State */}
+            {filteredContracts.length === 0 && (
+              <div className="text-center py-12">
+                <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No contracts found</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try adjusting your search or filter criteria.
+                </p>
               </div>
             )}
           </div>
@@ -411,4 +404,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default ContractsDashboard;
