@@ -1,221 +1,221 @@
-// src/utils/formatters.js (Complete file)
-import { APP_CONSTANTS } from './constants';
-import { helpers } from './helpers';
-
-// Date and number formatting utilities
+// src/utils/formatters.js
 export const formatters = {
   // Date formatting
   date: {
-    // Format date for display (e.g., "Jan 15, 2024")
     display: (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    },
-
-    // Format date for API (e.g., "2024-01-15")
-    api: (date) => {
-      if (!date) return '';
-      const d = new Date(date);
-      return d.toISOString().split('T')[0];
-    },
-
-    // Format full date with time (e.g., "January 15, 2024 at 2:30 PM")
-    full: (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    },
-
-    // Relative time (e.g., "2 days ago", "in 3 months")
-    relative: (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = date - now;
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) return 'Today';
-      if (diffDays === 1) return 'Tomorrow';
-      if (diffDays === -1) return 'Yesterday';
-      if (diffDays > 0) return `In ${diffDays} days`;
-      return `${Math.abs(diffDays)} days ago`;
-    },
-
-    // Get time until expiry
-    timeUntilExpiry: (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = date - now;
-      
-      if (diffMs < 0) return 'Expired';
-      
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      
-      if (diffDays <= 30) return `${diffDays} days left`;
-      if (diffDays <= 365) {
-        const months = Math.ceil(diffDays / 30);
-        return `${months} month${months > 1 ? 's' : ''} left`;
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
       }
-      
-      const years = Math.floor(diffDays / 365);
-      return `${years} year${years > 1 ? 's' : ''} left`;
-    }
-  },
-
-  // Number formatting
-  number: {
-    // Format with commas (e.g., "1,234")
-    withCommas: (num) => {
-      if (num == null) return '';
-      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     },
-
-    // Format as currency (e.g., "$1,234.56")
-    currency: (amount, currency = 'USD') => {
-      if (amount == null) return '';
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency
-      }).format(amount);
+    
+    relative: (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const now = new Date();
+        const diffTime = date.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          return `${Math.abs(diffDays)} days ago`;
+        } else if (diffDays === 0) {
+          return 'Today';
+        } else if (diffDays === 1) {
+          return 'Tomorrow';
+        } else if (diffDays <= 30) {
+          return `In ${diffDays} days`;
+        } else {
+          return formatters.date.display(dateString);
+        }
+      } catch (error) {
+        return dateString;
+      }
     },
-
-    // Format as percentage (e.g., "25.5%")
-    percentage: (value, decimals = 1) => {
-      if (value == null) return '';
-      return `${(value * 100).toFixed(decimals)}%`;
-    },
-
-    // Format file size
-    fileSize: (bytes) => {
-      return helpers.formatBytes(bytes);
-    },
-
-    // Format confidence score
-    confidence: (score) => {
-      if (score == null) return '';
-      return `${Math.round(score * 100)}%`;
+    
+    full: (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        return date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
+      }
     }
   },
 
   // Text formatting
   text: {
-    // Capitalize words
-    titleCase: (str) => {
-      if (!str) return '';
-      return str.replace(/\w\S*/g, (txt) => 
-        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-      );
+    truncate: (text, maxLength = 50) => {
+      if (!text) return 'N/A';
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength) + '...';
     },
-
-    // Convert camelCase to readable text
-    camelToWords: (str) => {
-      if (!str) return '';
-      return str.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+    
+    capitalize: (text) => {
+      if (!text) return '';
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
     },
-
-    // Truncate with ellipsis
-    truncate: (str, maxLength = 50) => {
-      return helpers.truncate(str, maxLength);
-    },
-
-    // Format contract parties
+    
     parties: (partiesString) => {
-      if (!partiesString) return '';
-      return partiesString.replace(' & ', ' • ');
+      if (!partiesString) return 'N/A';
+      // Handle different formats like "Company A & Company B" or "Company A, Company B"
+      if (partiesString.includes(' & ')) {
+        return partiesString.replace(' & ', ' • ');
+      }
+      if (partiesString.includes(', ')) {
+        return partiesString.replace(', ', ' • ');
+      }
+      return partiesString;
+    },
+    
+    initials: (name) => {
+      if (!name) return '';
+      return name
+        .split(' ')
+        .map(word => word.charAt(0))
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
     }
   },
 
-  // Risk and status formatting
+  // Status formatting
   status: {
-    // Get status color class
     getStatusColor: (status) => {
+      if (!status) return 'bg-gray-100 text-gray-800 border-gray-300';
+      
       const statusColors = {
-        'Active': 'bg-green-100 text-green-800 border-green-200',
-        'Expired': 'bg-red-100 text-red-800 border-red-200',
-        'Renewal Due': 'bg-orange-100 text-orange-800 border-orange-200',
-        'Draft': 'bg-gray-100 text-gray-800 border-gray-200',
-        'Terminated': 'bg-red-100 text-red-800 border-red-200',
-        'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'Cancelled': 'bg-gray-100 text-gray-800 border-gray-200'
+        'Active': 'bg-green-100 text-green-800 border-green-300',
+        'Expired': 'bg-red-100 text-red-800 border-red-300',
+        'Renewal Due': 'bg-orange-100 text-orange-800 border-orange-300',
+        'Draft': 'bg-blue-100 text-blue-800 border-blue-300',
+        'Terminated': 'bg-gray-100 text-gray-800 border-gray-300'
       };
-      return statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+      
+      return statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
     },
-
-    // Get risk color class
+    
     getRiskColor: (risk) => {
+      if (!risk) return 'bg-gray-100 text-gray-800 border-gray-300';
+      
       const riskColors = {
-        'High': 'bg-red-100 text-red-800 border-red-200',
-        'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'Low': 'bg-green-100 text-green-800 border-green-200'
+        'High': 'bg-red-100 text-red-800 border-red-300',
+        'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+        'Low': 'bg-green-100 text-green-800 border-green-300'
       };
-      return riskColors[risk] || 'bg-gray-100 text-gray-800 border-gray-200';
+      
+      return riskColors[risk] || 'bg-gray-100 text-gray-800 border-gray-300';
     },
+    
+    getConfidenceColor: (confidence) => {
+      if (typeof confidence !== 'number') return 'bg-gray-100 text-gray-800';
+      
+      if (confidence >= 0.8) {
+        return 'bg-green-100 text-green-800';
+      } else if (confidence >= 0.6) {
+        return 'bg-yellow-100 text-yellow-800';
+      } else {
+        return 'bg-red-100 text-red-800';
+      }
+    }
+  },
 
-    // Get insight background color
-    getInsightColor: (risk) => {
-      const insightColors = {
-        'High': 'border-red-200 bg-red-50',
-        'Medium': 'border-yellow-200 bg-yellow-50',
-        'Low': 'border-green-200 bg-green-50'
-      };
-      return insightColors[risk] || 'border-gray-200 bg-gray-50';
+  // Number formatting
+  number: {
+    currency: (amount, currency = 'USD') => {
+      if (typeof amount !== 'number') return 'N/A';
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency
+      }).format(amount);
     },
-
-    // Get risk icon color
-    getRiskIconColor: (risk) => {
-      const iconColors = {
-        'High': 'text-red-600',
-        'Medium': 'text-yellow-600',
-        'Low': 'text-green-600'
-      };
-      return iconColors[risk] || 'text-gray-600';
+    
+    percentage: (value) => {
+      if (typeof value !== 'number') return 'N/A';
+      return `${Math.round(value * 100)}%`;
     },
-
-    // Get status badge variant
-    getStatusBadgeVariant: (status) => {
-      const variants = {
-        'Active': 'success',
-        'Expired': 'danger',
-        'Renewal Due': 'warning',
-        'Draft': 'secondary',
-        'Terminated': 'danger',
-        'Pending': 'warning',
-        'Cancelled': 'secondary'
-      };
-      return variants[status] || 'secondary';
+    
+    decimal: (value, places = 2) => {
+      if (typeof value !== 'number') return 'N/A';
+      return value.toFixed(places);
     },
+    
+    compact: (value) => {
+      if (typeof value !== 'number') return 'N/A';
+      
+      if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(1)}M`;
+      } else if (value >= 1000) {
+        return `${(value / 1000).toFixed(1)}K`;
+      }
+      return value.toString();
+    }
+  },
 
-    // Get risk badge variant
-    getRiskBadgeVariant: (risk) => {
-      const variants = {
-        'High': 'danger',
-        'Medium': 'warning',
-        'Low': 'success'
-      };
-      return variants[risk] || 'secondary';
+  // File formatting
+  file: {
+    size: (bytes) => {
+      if (typeof bytes !== 'number') return 'N/A';
+      
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      if (bytes === 0) return '0 Bytes';
+      
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${Math.round(bytes / Math.pow(1024, i) * 100) / 100} ${sizes[i]}`;
+    },
+    
+    extension: (filename) => {
+      if (!filename) return '';
+      const parts = filename.split('.');
+      return parts.length > 1 ? `.${parts.pop().toLowerCase()}` : '';
+    },
+    
+    name: (filename) => {
+      if (!filename) return 'Unknown';
+      const parts = filename.split('.');
+      return parts.length > 1 ? parts.slice(0, -1).join('.') : filename;
+    }
+  },
+
+  // Utility formatters
+  utils: {
+    phoneNumber: (phone) => {
+      if (!phone) return 'N/A';
+      const cleaned = phone.replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+      }
+      return phone;
+    },
+    
+    email: (email) => {
+      if (!email) return 'N/A';
+      return email.toLowerCase();
+    },
+    
+    url: (url) => {
+      if (!url) return 'N/A';
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return `https://${url}`;
+      }
+      return url;
     }
   }
 };
-
-// Export specific formatters for convenience
-export const { date, number, text, status } = formatters;
-
-// Additional utility functions
-export const formatDate = formatters.date.display;
-export const formatCurrency = formatters.number.currency;
-export const formatPercentage = formatters.number.percentage;
-export const getStatusColor = formatters.status.getStatusColor;
-export const getRiskColor = formatters.status.getRiskColor;

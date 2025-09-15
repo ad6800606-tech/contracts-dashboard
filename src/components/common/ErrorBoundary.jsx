@@ -1,3 +1,4 @@
+// src/components/common/ErrorBoundary.jsx
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
@@ -6,8 +7,9 @@ class ErrorBoundary extends React.Component {
     super(props);
     this.state = { 
       hasError: false, 
-      error: null,
-      errorInfo: null 
+      error: null, 
+      errorInfo: null,
+      retryCount: 0
     };
   }
 
@@ -17,8 +19,8 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error to console and potentially to error reporting service
-    console.error('Error caught by boundary:', error, errorInfo);
+    // Log error details
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     
     this.setState({
       error: error,
@@ -26,40 +28,75 @@ class ErrorBoundary extends React.Component {
     });
 
     // You can also log the error to an error reporting service here
-    // logErrorToService(error, errorInfo);
+    if (typeof this.props.onError === 'function') {
+      this.props.onError(error, errorInfo);
+    }
   }
 
-  handleReload = () => {
-    window.location.reload();
+  handleRetry = () => {
+    this.setState(prevState => ({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      retryCount: prevState.retryCount + 1
+    }));
   };
 
   handleGoHome = () => {
-    window.location.href = '/';
+    if (typeof this.props.onGoHome === 'function') {
+      this.props.onGoHome();
+    } else {
+      window.location.href = '/';
+    }
   };
 
   render() {
     if (this.state.hasError) {
-      // Custom error UI
+      // Custom fallback UI
+      if (this.props.fallback) {
+        return this.props.fallback(this.state.error, this.handleRetry);
+      }
+
+      // Default error UI
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <div className="max-w-md w-full">
-            <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+            <div className="text-center">
+              {/* Error Icon */}
+              <div className="mx-auto bg-red-100 rounded-full p-4 w-fit mb-6">
+                <AlertTriangle className="w-12 h-12 text-red-600 mx-auto" />
               </div>
-              
-              <h1 className="text-xl font-semibold text-gray-900 mb-2">
+
+              {/* Error Title */}
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
                 Oops! Something went wrong
               </h1>
-              
+
+              {/* Error Message */}
               <p className="text-gray-600 mb-6">
-                We encountered an unexpected error. This might be a temporary issue.
+                {this.props.message || 
+                  "We encountered an unexpected error. This has been logged and we'll look into it."
+                }
               </p>
 
+              {/* Error Details (Development Only) */}
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <div className="bg-gray-100 rounded-lg p-4 mb-6 text-left">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                    Error Details (Development):
+                  </h3>
+                  <pre className="text-xs text-red-600 overflow-auto max-h-32">
+                    {this.state.error.toString()}
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                </div>
+              )}
+
+              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
-                  onClick={this.handleReload}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={this.handleRetry}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Try Again
@@ -67,25 +104,18 @@ class ErrorBoundary extends React.Component {
                 
                 <button
                   onClick={this.handleGoHome}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   <Home className="w-4 h-4" />
                   Go Home
                 </button>
               </div>
 
-              {/* Show error details in development */}
-              {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="mt-6 text-left">
-                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
-                    Show Error Details
-                  </summary>
-                  <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono text-red-600 overflow-auto max-h-32">
-                    {this.state.error.toString()}
-                    <br />
-                    {this.state.errorInfo.componentStack}
-                  </div>
-                </details>
+              {/* Retry Counter (Development Only) */}
+              {process.env.NODE_ENV === 'development' && this.state.retryCount > 0 && (
+                <p className="text-xs text-gray-500 mt-4">
+                  Retry attempts: {this.state.retryCount}
+                </p>
               )}
             </div>
           </div>
@@ -93,9 +123,55 @@ class ErrorBoundary extends React.Component {
       );
     }
 
-    // Render children normally when there's no error
+    // No error, render children normally
     return this.props.children;
   }
 }
+
+// Higher-order component for functional components
+export const withErrorBoundary = (Component, errorBoundaryProps = {}) => {
+  const WrappedComponent = (props) => (
+    <ErrorBoundary {...errorBoundaryProps}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+  return WrappedComponent;
+};
+
+// Hook for error handling in functional components
+export const useErrorHandler = () => {
+  const [error, setError] = React.useState(null);
+
+  const resetError = React.useCallback(() => {
+    setError(null);
+  }, []);
+
+  const captureError = React.useCallback((error) => {
+    console.error('Error captured by useErrorHandler:', error);
+    setError(error);
+  }, []);
+
+  // Throw error to be caught by ErrorBoundary
+  React.useEffect(() => {
+    if (error) {
+      throw error;
+    }
+  }, [error]);
+
+  return { captureError, resetError };
+};
+
+// Async error boundary hook
+export const useAsyncError = () => {
+  const [, setError] = React.useState();
+  
+  return React.useCallback((error) => {
+    setError(() => {
+      throw error;
+    });
+  }, []);
+};
 
 export default ErrorBoundary;

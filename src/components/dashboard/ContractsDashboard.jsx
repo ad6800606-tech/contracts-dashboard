@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Search, 
   Filter, 
@@ -39,55 +39,66 @@ const ContractsDashboard = () => {
     toggleModal
   } = useApp();
 
-  const [searchTerm, setSearchTerm] = useState(filters.search || '');
+  const [searchTerm, setSearchTerm] = useState(filters?.search || '');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
+  // Memoized setFilters to prevent recreation on every render
+  const memoizedSetFilters = useCallback((newFilters) => {
+    setFilters(newFilters);
+  }, [setFilters]);
+
   // Update search filter when debounced search term changes
   useEffect(() => {
-    setFilters({ search: debouncedSearchTerm });
-  }, [debouncedSearchTerm, setFilters]);
+    if (debouncedSearchTerm !== filters?.search) {
+      memoizedSetFilters({ search: debouncedSearchTerm });
+    }
+  }, [debouncedSearchTerm, filters?.search, memoizedSetFilters]);
 
   // Calculate dashboard statistics
-  const stats = React.useMemo(() => {
-    if (!allContracts.length) return { total: 0, active: 0, expiring: 0, highRisk: 0 };
+  const stats = useMemo(() => {
+    if (!allContracts || !Array.isArray(allContracts) || allContracts.length === 0) {
+      return { total: 0, active: 0, expiring: 0, highRisk: 0 };
+    }
     
     return {
       total: allContracts.length,
-      active: allContracts.filter(c => c.status === 'Active').length,
-      expiring: allContracts.filter(c => c.status === 'Renewal Due').length,
-      highRisk: allContracts.filter(c => c.risk === 'High').length
+      active: allContracts.filter(c => c?.status === 'Active').length,
+      expiring: allContracts.filter(c => c?.status === 'Renewal Due').length,
+      highRisk: allContracts.filter(c => c?.risk === 'High').length
     };
   }, [allContracts]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchContracts(filters);
-  };
+  }, [fetchContracts, filters]);
 
-  const handleViewContract = (contract) => {
-    fetchContractDetails(contract.id);
-    setCurrentPage('contract-detail');
-  };
+  const handleViewContract = useCallback((contract) => {
+    if (contract?.id) {
+      fetchContractDetails(contract.id);
+      setCurrentPage('contract-detail');
+    }
+  }, [fetchContractDetails, setCurrentPage]);
 
-  const handleFilterChange = (filterType, value) => {
+  const handleFilterChange = useCallback((filterType, value) => {
     setFilters({ [filterType]: value });
-  };
+  }, [setFilters]);
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = useCallback((newPage) => {
     setPagination({ currentPage: newPage });
-  };
+  }, [setPagination]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setFilters({ search: '', status: 'all', risk: 'all' });
-  };
+  }, [setFilters]);
 
   // Get page numbers for pagination
-  const getPageNumbers = () => {
-    const totalPages = pagination.totalPages;
-    const current = pagination.currentPage;
+  const getPageNumbers = useCallback(() => {
+    const totalPages = pagination?.totalPages || 0;
+    const current = pagination?.currentPage || 1;
     const pages = [];
     
     if (totalPages <= 7) {
@@ -105,14 +116,14 @@ const ContractsDashboard = () => {
     }
     
     return pages;
-  };
+  }, [pagination]);
 
   const StatCard = ({ title, value, icon: Icon, trend, color = 'blue' }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-2xl font-bold text-gray-900">{value || 0}</p>
           {trend && (
             <div className="flex items-center mt-2">
               <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
@@ -127,82 +138,94 @@ const ContractsDashboard = () => {
     </div>
   );
 
-  const ContractCard = ({ contract }) => (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{contract.name}</h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-            <Users className="w-4 h-4" />
-            <span>{formatters.text.parties(contract.parties)}</span>
+  const ContractCard = ({ contract }) => {
+    if (!contract) return null;
+    
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{contract.name || 'Untitled Contract'}</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+              <Users className="w-4 h-4" />
+              <span>{formatters?.text?.parties ? formatters.text.parties(contract.parties) : contract.parties || 'N/A'}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters?.status?.getStatusColor ? formatters.status.getStatusColor(contract.status) : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+              {contract.status || 'Unknown'}
+            </span>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters?.status?.getRiskColor ? formatters.status.getRiskColor(contract.risk) : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+              {contract.risk || 'Unknown'}
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters.status.getStatusColor(contract.status)}`}>
-            {contract.status}
-          </span>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters.status.getRiskColor(contract.risk)}`}>
-            {contract.risk}
-          </span>
-        </div>
-      </div>
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Calendar className="w-4 h-4" />
-          <span>Expires {formatters.date.display(contract.expiry)}</span>
-        </div>
-        <button
-          onClick={() => handleViewContract(contract)}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          <Eye className="w-4 h-4" />
-          View Details
-        </button>
-      </div>
-    </div>
-  );
-
-  const ContractTableRow = ({ contract }) => (
-    <tr className="hover:bg-gray-50 transition-colors">
-      <td className="px-6 py-4">
-        <div>
-          <div className="text-sm font-medium text-gray-900">{contract.name}</div>
-          <div className="text-sm text-gray-500">{formatters.text.parties(contract.parties)}</div>
-        </div>
-      </td>
-      <td className="px-6 py-4 text-sm text-gray-900">
-        {formatters.date.display(contract.expiry)}
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters.status.getStatusColor(contract.status)}`}>
-          {contract.status}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters.status.getRiskColor(contract.risk)}`}>
-          {contract.risk}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="w-4 h-4" />
+            <span>Expires {formatters?.date?.display ? formatters.date.display(contract.expiry) : contract.expiry || 'N/A'}</span>
+          </div>
           <button
             onClick={() => handleViewContract(contract)}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="View Details"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <Eye className="w-4 h-4" />
-          </button>
-          <button
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="More Actions"
-          >
-            <MoreHorizontal className="w-4 h-4" />
+            View Details
           </button>
         </div>
-      </td>
-    </tr>
-  );
+      </div>
+    );
+  };
+
+  const ContractTableRow = ({ contract }) => {
+    if (!contract) return null;
+    
+    return (
+      <tr className="hover:bg-gray-50 transition-colors">
+        <td className="px-6 py-4">
+          <div>
+            <div className="text-sm font-medium text-gray-900">{contract.name || 'Untitled Contract'}</div>
+            <div className="text-sm text-gray-500">{formatters?.text?.parties ? formatters.text.parties(contract.parties) : contract.parties || 'N/A'}</div>
+          </div>
+        </td>
+        <td className="px-6 py-4 text-sm text-gray-900">
+          {formatters?.date?.display ? formatters.date.display(contract.expiry) : contract.expiry || 'N/A'}
+        </td>
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters?.status?.getStatusColor ? formatters.status.getStatusColor(contract.status) : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+            {contract.status || 'Unknown'}
+          </span>
+        </td>
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${formatters?.status?.getRiskColor ? formatters.status.getRiskColor(contract.risk) : 'bg-gray-100 text-gray-800 border-gray-300'}`}>
+            {contract.risk || 'Unknown'}
+          </span>
+        </td>
+        <td className="px-6 py-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleViewContract(contract)}
+              className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+            >
+              View
+            </button>
+            <button className="text-gray-400 hover:text-gray-600">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  if (loading && (!contracts || contracts.length === 0)) {
+    return (
+      <div className="p-6">
+        <Loading size="lg" text="Loading contracts..." />
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -218,20 +241,26 @@ const ContractsDashboard = () => {
     );
   }
 
+  const displayContracts = contracts || [];
+  const hasContracts = displayContracts.length > 0;
+  const hasFilters = (filters?.search && filters.search !== '') || 
+                    (filters?.status && filters.status !== 'all') || 
+                    (filters?.risk && filters.risk !== 'all');
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Contracts Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage and analyze your contract portfolio</p>
+          <p className="text-gray-600">Manage and monitor your contract portfolio</p>
         </div>
         
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -248,7 +277,7 @@ const ContractsDashboard = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Contracts"
           value={stats.total}
@@ -276,7 +305,7 @@ const ContractsDashboard = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="relative flex-1">
@@ -322,44 +351,44 @@ const ContractsDashboard = () => {
           </div>
         </div>
 
-        {/* Filter Options */}
+        {/* Advanced Filters */}
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  value={filters.status || 'all'}
+                  value={filters?.status || 'all'}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {FILTER_OPTIONS.STATUS.map(option => (
+                  {FILTER_OPTIONS?.STATUS?.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
-                  ))}
+                  )) || <option value="all">All Status</option>}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Risk Level</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Risk Level</label>
                 <select
-                  value={filters.risk || 'all'}
+                  value={filters?.risk || 'all'}
                   onChange={(e) => handleFilterChange('risk', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {FILTER_OPTIONS.RISK.map(option => (
+                  {FILTER_OPTIONS?.RISK?.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
-                  ))}
+                  )) || <option value="all">All Risk Levels</option>}
                 </select>
               </div>
 
               <div className="flex items-end">
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Clear Filters
                 </button>
@@ -369,145 +398,101 @@ const ContractsDashboard = () => {
         )}
       </div>
 
-      {/* Contracts Display */}
-      {loading && !contracts.length ? (
-        <div className="space-y-6">
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contract</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {[...Array(5)].map((_, i) => (
-                    <SkeletonTableRow key={i} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ) : contracts.length === 0 ? (
+      {/* Contracts Content */}
+      {!hasContracts ? (
         <EmptyState
-          type={filters.search || filters.status !== 'all' || filters.risk !== 'all' ? 'search' : 'contracts'}
-          title={filters.search || filters.status !== 'all' || filters.risk !== 'all' ? 'No contracts found' : 'No contracts yet'}
-          description={filters.search || filters.status !== 'all' || filters.risk !== 'all' ? 'Try adjusting your search or filters.' : 'Get started by uploading your first contract.'}
-          actionText={filters.search || filters.status !== 'all' || filters.risk !== 'all' ? 'Clear Filters' : 'Upload Contract'}
-          onAction={filters.search || filters.status !== 'all' || filters.risk !== 'all' ? clearFilters : () => toggleModal('upload')}
+          type="contracts"
+          title={hasFilters ? "No contracts match your filters" : "No contracts yet"}
+          description={hasFilters ? "Try adjusting your search or filter criteria." : "Upload your first contract to get started."}
+          actionText={hasFilters ? "Clear Filters" : "Upload Contract"}
+          onAction={hasFilters ? clearFilters : () => toggleModal('upload')}
         />
       ) : (
         <>
-          {/* Results Info */}
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-600">
-              Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
-              {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
-              {pagination.totalItems} contracts
-            </p>
-            
-            {loading && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Updating...
+          {/* Contracts List/Grid */}
+          {viewMode === 'table' ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contract
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Expiry Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Risk
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {displayContracts.map((contract, index) => (
+                      <ContractTableRow key={contract?.id || index} contract={contract} />
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
-
-          {/* Contracts Grid/Table */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {contracts.map(contract => (
-                <ContractCard key={contract.id} contract={contract} />
-              ))}
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contract & Parties
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Expiry Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Risk Level
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {contracts.map(contract => (
-                    <ContractTableRow key={contract.id} contract={contract} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayContracts.map((contract, index) => (
+                <ContractCard key={contract?.id || index} contract={contract} />
+              ))}
             </div>
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">Page</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {pagination.currentPage} of {pagination.totalPages}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-6 py-3 border border-gray-200 rounded-lg">
+              <div className="flex items-center text-sm text-gray-700">
+                <span>
+                  Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+                  {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+                  {pagination.totalItems} results
                 </span>
               </div>
-
-              <div className="flex items-center gap-1">
+              
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
-                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 transition-colors"
+                  disabled={pagination.currentPage <= 1}
+                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  Previous
                 </button>
-
-                <div className="flex items-center gap-1 mx-2">
+                
+                <div className="flex items-center gap-1">
                   {getPageNumbers().map((page, index) => (
                     <button
                       key={index}
                       onClick={() => typeof page === 'number' ? handlePageChange(page) : null}
-                      disabled={page === '...'}
-                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                      disabled={typeof page !== 'number'}
+                      className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                         page === pagination.currentPage
                           ? 'bg-blue-600 text-white'
-                          : page === '...'
-                          ? 'text-gray-400 cursor-default'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          : typeof page === 'number'
+                          ? 'text-gray-700 hover:bg-gray-100'
+                          : 'text-gray-400 cursor-default'
                       }`}
                     >
                       {page}
                     </button>
                   ))}
                 </div>
-
+                
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg hover:bg-gray-100 transition-colors"
+                  disabled={pagination.currentPage >= pagination.totalPages}
+                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>

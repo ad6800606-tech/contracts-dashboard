@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { contractsService } from '../services/contracts.service';
 
 const AppContext = createContext();
@@ -6,6 +6,7 @@ const AppContext = createContext();
 // App State
 const initialState = {
   contracts: [],
+  allContracts: [], // Add this missing property
   selectedContract: null,
   currentPage: 'dashboard',
   loading: false,
@@ -18,7 +19,8 @@ const initialState = {
   pagination: {
     currentPage: 1,
     itemsPerPage: 10,
-    totalItems: 0
+    totalItems: 0,
+    totalPages: 0
   },
   modals: {
     upload: false,
@@ -35,6 +37,7 @@ const ActionTypes = {
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
   SET_CONTRACTS: 'SET_CONTRACTS',
+  SET_ALL_CONTRACTS: 'SET_ALL_CONTRACTS',
   SET_SELECTED_CONTRACT: 'SET_SELECTED_CONTRACT',
   SET_CURRENT_PAGE: 'SET_CURRENT_PAGE',
   SET_FILTERS: 'SET_FILTERS',
@@ -54,19 +57,33 @@ const appReducer = (state, action) => {
       return { ...state, error: action.payload, loading: false };
     
     case ActionTypes.SET_CONTRACTS:
+      const filteredContracts = action.payload.filtered || action.payload;
+      const allContracts = action.payload.all || action.payload;
+      const totalPages = Math.ceil(filteredContracts.length / state.pagination.itemsPerPage);
+      
       return { 
         ...state, 
-        contracts: action.payload,
+        contracts: filteredContracts,
+        allContracts: allContracts,
         pagination: {
           ...state.pagination,
-          totalItems: action.payload.length
+          totalItems: filteredContracts.length,
+          totalPages: totalPages
         },
         loading: false,
         error: null
       };
     
+    case ActionTypes.SET_ALL_CONTRACTS:
+      return { 
+        ...state, 
+        allContracts: action.payload,
+        loading: false,
+        error: null
+      };
+    
     case ActionTypes.SET_SELECTED_CONTRACT:
-      return { ...state, selectedContract: action.payload, loading: false };
+      return { ...state, selectedContract: action.payload, loading: false, error: null };
     
     case ActionTypes.SET_CURRENT_PAGE:
       return { ...state, currentPage: action.payload };
@@ -108,60 +125,78 @@ const appReducer = (state, action) => {
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Actions
+  // Memoized actions to prevent unnecessary re-renders
   const actions = {
-    setLoading: (loading) => dispatch({ type: ActionTypes.SET_LOADING, payload: loading }),
+    setLoading: useCallback((loading) => {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: loading });
+    }, []),
     
-    setError: (error) => dispatch({ type: ActionTypes.SET_ERROR, payload: error }),
+    setError: useCallback((error) => {
+      dispatch({ type: ActionTypes.SET_ERROR, payload: error });
+    }, []),
     
-    setCurrentPage: (page) => dispatch({ type: ActionTypes.SET_CURRENT_PAGE, payload: page }),
+    setCurrentPage: useCallback((page) => {
+      dispatch({ type: ActionTypes.SET_CURRENT_PAGE, payload: page });
+    }, []),
     
-    setFilters: (filters) => dispatch({ type: ActionTypes.SET_FILTERS, payload: filters }),
+    setFilters: useCallback((filters) => {
+      dispatch({ type: ActionTypes.SET_FILTERS, payload: filters });
+    }, []),
     
-    setPagination: (pagination) => dispatch({ type: ActionTypes.SET_PAGINATION, payload: pagination }),
+    setPagination: useCallback((pagination) => {
+      dispatch({ type: ActionTypes.SET_PAGINATION, payload: pagination });
+    }, []),
     
-    toggleModal: (modal) => dispatch({ type: ActionTypes.TOGGLE_MODAL, payload: modal }),
+    toggleModal: useCallback((modal) => {
+      dispatch({ type: ActionTypes.TOGGLE_MODAL, payload: modal });
+    }, []),
     
-    toggleUIElement: (element) => dispatch({ type: ActionTypes.TOGGLE_UI_ELEMENT, payload: element }),
+    toggleUIElement: useCallback((element) => {
+      dispatch({ type: ActionTypes.TOGGLE_UI_ELEMENT, payload: element });
+    }, []),
 
     // Async Actions
-    fetchContracts: async (filters = {}) => {
+    fetchContracts: useCallback(async (filters = {}) => {
       try {
         dispatch({ type: ActionTypes.SET_LOADING, payload: true });
         const contracts = await contractsService.getContracts(filters);
+        
+        // Store both all contracts and filtered contracts
+        dispatch({ type: ActionTypes.SET_ALL_CONTRACTS, payload: contracts });
         dispatch({ type: ActionTypes.SET_CONTRACTS, payload: contracts });
       } catch (error) {
-        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message });
+        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message || 'Failed to fetch contracts' });
       }
-    },
+    }, []),
 
-    fetchContractDetails: async (id) => {
+    fetchContractDetails: useCallback(async (id) => {
       try {
         dispatch({ type: ActionTypes.SET_LOADING, payload: true });
         const contract = await contractsService.getContractById(id);
         dispatch({ type: ActionTypes.SET_SELECTED_CONTRACT, payload: contract });
       } catch (error) {
-        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message });
+        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message || 'Failed to fetch contract details' });
       }
-    },
+    }, []),
 
-    uploadFiles: async (files) => {
+    uploadFiles: useCallback(async (files) => {
       try {
         dispatch({ type: ActionTypes.SET_LOADING, payload: true });
         // Simulate file upload
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Refresh contracts after upload
-        actions.fetchContracts(state.filters);
+        const contracts = await contractsService.getContracts(state.filters);
+        dispatch({ type: ActionTypes.SET_CONTRACTS, payload: contracts });
       } catch (error) {
-        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message });
+        dispatch({ type: ActionTypes.SET_ERROR, payload: error.message || 'Failed to upload files' });
       }
-    }
+    }, [state.filters])
   };
 
-  // Load initial data
+  // Load initial data - only run once on mount
   useEffect(() => {
     actions.fetchContracts();
-  }, []);
+  }, []); // Remove actions dependency to prevent infinite loop
 
   const value = {
     ...state,
