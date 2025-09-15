@@ -1,3 +1,4 @@
+// File: src/components/layout/MainLayout.jsx
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
@@ -53,18 +54,28 @@ const MainLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
       
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+      
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden md:ml-64">
+      <div className="flex-1 flex flex-col lg:ml-72">
         {/* Topbar */}
         <Topbar onSidebarToggle={toggleSidebar} />
         
-        {/* Page content */}
-        <main className="main-content">
-          {renderPage()}
+        {/* Page content with proper padding */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-6 lg:p-8">
+            {renderPage()}
+          </div>
         </main>
       </div>
 
