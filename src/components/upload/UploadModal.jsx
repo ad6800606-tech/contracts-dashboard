@@ -1,3 +1,4 @@
+// File: src/components/upload/UploadModal.jsx
 import React, { useState, useCallback } from 'react';
 import { 
   X, 
@@ -5,13 +6,10 @@ import {
   FileText, 
   AlertCircle,
   CheckCircle,
-  Loader
+  Loader,
+  CloudUpload
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { APP_CONSTANTS } from '../../utils/constants';
-import { helpers } from '../../utils/helpers';
-import FileDropzone from './FileDropzone';
-import FileList from './FileList';
 
 const UploadModal = () => {
   const { modals, toggleModal, uploadFiles } = useApp();
@@ -21,6 +19,34 @@ const UploadModal = () => {
   const [uploadComplete, setUploadComplete] = useState(false);
 
   const isOpen = modals.upload;
+
+  // App constants - Define here since we don't have access to constants file
+  const APP_CONSTANTS = {
+    MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+    MAX_FILES_PER_UPLOAD: 5,
+    ALLOWED_FILE_TYPES: ['.pdf', '.doc', '.docx', '.txt']
+  };
+
+  // Helper functions
+  const helpers = {
+    formatBytes: (bytes, decimals = 2) => {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    },
+    
+    isValidFileType: (fileName) => {
+      const extension = '.' + fileName.split('.').pop().toLowerCase();
+      return APP_CONSTANTS.ALLOWED_FILE_TYPES.includes(extension);
+    },
+    
+    generateId: () => Math.random().toString(36).substr(2, 9),
+    
+    delay: (ms) => new Promise(resolve => setTimeout(resolve, ms))
+  };
 
   // Reset state when modal opens/closes
   React.useEffect(() => {
@@ -92,7 +118,7 @@ const UploadModal = () => {
 
     // Simulate upload progress
     for (let progress = 0; progress <= 100; progress += 10) {
-      await helpers.delay(100 + Math.random() * 100); // Random delay for realism
+      await helpers.delay(100 + Math.random() * 100);
       
       setUploadProgress(prev => ({
         ...prev,
@@ -104,125 +130,107 @@ const UploadModal = () => {
       ));
     }
 
-    // Simulate occasional upload failures
-    const shouldFail = Math.random() < 0.1; // 10% failure rate
+    // Simulate success/failure
+    const success = Math.random() > 0.2; // 80% success rate
     
-    if (shouldFail) {
-      setFiles(prev => prev.map(f => 
-        f.id === id ? { 
-          ...f, 
-          status: 'error', 
-          errors: ['Upload failed. Please try again.'],
-          progress: 0
-        } : f
-      ));
-    } else {
-      setFiles(prev => prev.map(f => 
-        f.id === id ? { ...f, status: 'success', progress: 100 } : f
-      ));
-    }
+    setFiles(prev => prev.map(f => 
+      f.id === id 
+        ? { ...f, status: success ? 'success' : 'error', progress: 100 }
+        : f
+    ));
   };
 
   const handleUpload = async () => {
     const validFiles = files.filter(f => f.status === 'pending');
-    
-    if (validFiles.length === 0) {
-      return;
-    }
+    if (validFiles.length === 0) return;
 
     setUploading(true);
 
-    try {
-      // Upload files in parallel
-      await Promise.all(
-        validFiles.map(fileItem => simulateFileUpload(fileItem))
-      );
+    // Upload files concurrently
+    await Promise.all(
+      validFiles.map(file => simulateFileUpload(file))
+    );
 
-      // Check if all uploads were successful
-      const hasErrors = files.some(f => f.status === 'error');
-      if (!hasErrors) {
-        setUploadComplete(true);
-        
-        // Auto-close modal after successful upload
-        setTimeout(() => {
-          handleClose();
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-    } finally {
-      setUploading(false);
-    }
+    setUploading(false);
+    setUploadComplete(true);
   };
 
-  const handleRetryFile = (fileId) => {
-    const fileItem = files.find(f => f.id === fileId);
-    if (fileItem) {
-      simulateFileUpload(fileItem);
+  const handleRetryFile = async (fileId) => {
+    const file = files.find(f => f.id === fileId);
+    if (file) {
+      await simulateFileUpload(file);
     }
   };
 
   const handleClose = () => {
-    if (uploading) {
-      const confirmClose = window.confirm('Upload in progress. Are you sure you want to close?');
-      if (!confirmClose) return;
+    if (!uploading) {
+      toggleModal('upload');
     }
-    toggleModal('upload');
   };
 
-  const getUploadStats = () => {
-    const total = files.length;
-    const pending = files.filter(f => f.status === 'pending').length;
-    const uploading = files.filter(f => f.status === 'uploading').length;
-    const success = files.filter(f => f.status === 'success').length;
-    const error = files.filter(f => f.status === 'error').length;
+  // File drop handlers
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    return { total, pending, uploading, success, error };
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    handleFilesSelected(droppedFiles);
+  }, [handleFilesSelected]);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleFileInput = useCallback((e) => {
+    const selectedFiles = Array.from(e.target.files);
+    handleFilesSelected(selectedFiles);
+    e.target.value = ''; // Reset input
+  }, [handleFilesSelected]);
+
+  // Calculate stats
+  const stats = {
+    total: files.length,
+    pending: files.filter(f => f.status === 'pending').length,
+    uploading: files.filter(f => f.status === 'uploading').length,
+    success: files.filter(f => f.status === 'success').length,
+    error: files.filter(f => f.status === 'error').length
   };
+
+  const canUpload = stats.pending > 0 && !uploading;
+  const allComplete = stats.uploading === 0 && stats.pending === 0 && stats.total > 0;
 
   if (!isOpen) return null;
 
-  const stats = getUploadStats();
-  const canUpload = stats.pending > 0 && !uploading;
-  const allComplete = stats.total > 0 && stats.pending === 0 && stats.uploading === 0;
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Upload className="w-5 h-5 text-blue-600" />
+              <Upload className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Upload Contracts</h2>
-              <p className="text-sm text-gray-600">
-                Add new contracts to your dashboard
-              </p>
+              <h2 className="text-xl font-semibold text-gray-900">Upload Contracts</h2>
+              <p className="text-sm text-gray-500">Upload your contract documents for analysis</p>
             </div>
           </div>
-          
           <button
             onClick={handleClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             disabled={uploading}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {uploadComplete ? (
-            /* Success State */
+        <div className="flex-1 overflow-y-auto p-6">
+          {uploadComplete && stats.success > 0 ? (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Upload Complete!
-              </h3>
+              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Complete!</h3>
               <p className="text-gray-600 mb-4">
                 {stats.success} file{stats.success !== 1 ? 's' : ''} uploaded successfully.
                 Your contracts are being processed.
@@ -239,10 +247,29 @@ const UploadModal = () => {
               {/* File Dropzone */}
               {!uploading && (
                 <div className="mb-6">
-                  <FileDropzone
-                    onFilesSelected={handleFilesSelected}
-                    disabled={files.length >= APP_CONSTANTS.MAX_FILES_PER_UPLOAD}
-                  />
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                  >
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.txt"
+                      onChange={handleFileInput}
+                      className="hidden"
+                      id="fileInput"
+                    />
+                    <label htmlFor="fileInput" className="cursor-pointer">
+                      <CloudUpload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Drop files here or click to browse
+                      </h3>
+                      <p className="text-gray-500">
+                        Select up to {APP_CONSTANTS.MAX_FILES_PER_UPLOAD} files
+                      </p>
+                    </label>
+                  </div>
                 </div>
               )}
 
@@ -283,12 +310,70 @@ const UploadModal = () => {
                     )}
                   </div>
                   
-                  <FileList
-                    files={files}
-                    onRemoveFile={handleRemoveFile}
-                    onRetryFile={handleRetryFile}
-                    uploading={uploading}
-                  />
+                  <div className="space-y-2">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3 flex-1">
+                          <FileText className="w-5 h-5 text-gray-400" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {helpers.formatBytes(file.size)}
+                            </p>
+                            {file.errors.length > 0 && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {file.errors[0]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          {file.status === 'uploading' && (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${file.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-500">{file.progress}%</span>
+                            </div>
+                          )}
+                          
+                          {file.status === 'success' && (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          )}
+                          
+                          {file.status === 'error' && (
+                            <div className="flex items-center space-x-2">
+                              <AlertCircle className="w-5 h-5 text-red-500" />
+                              <button
+                                onClick={() => handleRetryFile(file.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                Retry
+                              </button>
+                            </div>
+                          )}
+                          
+                          {(file.status === 'pending' || file.status === 'error') && !uploading && (
+                            <button
+                              onClick={() => handleRemoveFile(file.id)}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
